@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card mb-4">
+  <div class="card-body">
+    <h5 class="card-title">Cargar archivo .out de Arena</h5>
+    <form method="post" enctype="multipart/form-data">
+      <div class="mb-3">
+        <input class="form-control" type="file" name="file" accept=".out" required>
+      </div>
+      <button type="submit" class="btn btn-primary">Procesar</button>
+    </form>
+  </div>
+</div>
+
+{% if resumen %}
+<div class="card mb-4">
+  <div class="card-body">
+    <h5 class="card-title">Resumen y propuestas de mejora (LLM)</h5>
+    <pre style="white-space: pre-wrap;">{{ resumen }}</pre>
+  </div>
+</div>
+{% endif %}
+
+<div class="row">
+  {% if wait_img %}
+  <div class="col-md-4 mb-4">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="card-title">Tiempos de espera</h6>
+        <img src="data:image/png;base64,{{ wait_img }}" class="img-fluid">
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if util_img %}
+  <div class="col-md-4 mb-4">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="card-title">Utilización de recursos</h6>
+        <img src="data:image/png;base64,{{ util_img }}" class="img-fluid">
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if wip_img %}
+  <div class="col-md-4 mb-4">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="card-title">WIP</h6>
+        <img src="data:image/png;base64,{{ wip_img }}" class="img-fluid">
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}
