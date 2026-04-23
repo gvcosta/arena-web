@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SimAnalyzer — Arena Simulation Reports</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f5f5f3;
+    --surface: #ffffff;
+    --surface2: #f0efeb;
+    --border: rgba(0,0,0,0.1);
+    --border2: rgba(0,0,0,0.18);
+    --text: #1a1a18;
+    --text2: #5c5c58;
+    --text3: #8a8a85;
+    --blue: #1e56a8;
+    --blue-light: #e8f0fb;
+    --blue-mid: #3266ad;
+    --green: #1d7a52;
+    --green-light: #e4f5ed;
+    --amber: #8a5200;
+    --amber-light: #fff4e0;
+    --red: #b52c2c;
+    --red-light: #fceaea;
+    --radius: 10px;
+    --radius-sm: 6px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.06);
+  }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 15px; line-height: 1.6; }
+
+  /* HEADER */
+  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 2rem; height: 60px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow); }
+  .header-brand { display: flex; align-items: center; gap: 12px; }
+  .header-logo { width: 38px; height: 38px; background: var(--blue); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; }
+  .header-logo svg { width: 22px; height: 22px; stroke: white; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .brand-name { font-size: 17px; font-weight: 700; color: var(--text); letter-spacing: -0.02em; }
+  .brand-sub { font-size: 11px; color: var(--text3); margin-top: -2px; }
+  .header-actions { display: flex; align-items: center; gap: 8px; }
+  .btn-outline { padding: 7px 16px; border: 1px solid var(--border2); border-radius: var(--radius-sm); font-size: 13px; background: transparent; color: var(--text2); cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 6px; transition: background 0.15s; }
+  .btn-outline:hover { background: var(--surface2); }
+
+  /* LAYOUT */
+  .main { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+  /* UPLOAD ZONE */
+  .upload-card { background: var(--surface); border-radius: var(--radius); border: 2px dashed var(--border2); padding: 3rem 2rem; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
+  .upload-card.drag, .upload-card:hover { border-color: var(--blue); background: var(--blue-light); }
+  .upload-icon-wrap { width: 64px; height: 64px; background: var(--blue-light); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem; }
+  .upload-icon-wrap svg { width: 32px; height: 32px; stroke: var(--blue); fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .upload-title { font-size: 18px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .upload-sub { font-size: 14px; color: var(--text2); margin-bottom: 1.5rem; }
+  .btn-primary { display: inline-flex; align-items: center; gap: 8px; padding: 10px 24px; background: var(--blue); color: white; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600; cursor: pointer; border: none; font-family: inherit; transition: opacity 0.15s; box-shadow: var(--shadow); }
+  .btn-primary:hover { opacity: 0.88; }
+  .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+  .file-types { margin-top: 1rem; font-size: 12px; color: var(--text3); }
+
+  /* DESCRIPTION */
+  .desc-card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 1.25rem 1.5rem; margin-top: 1.25rem; box-shadow: var(--shadow); }
+  .field-label { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; display: block; }
+  textarea { width: 100%; min-height: 100px; border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 14px; color: var(--text); background: var(--surface2); font-family: inherit; line-height: 1.65; resize: vertical; transition: border-color 0.15s; outline: none; }
+  textarea:focus { border-color: var(--blue); background: white; }
+  .analyze-btn-wrap { margin-top: 1.25rem; }
+  .btn-analyze { width: 100%; padding: 14px; background: var(--blue); color: white; border: none; border-radius: var(--radius-sm); font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 10px; transition: opacity 0.15s; box-shadow: var(--shadow-md); }
+  .btn-analyze:hover { opacity: 0.88; }
+  .btn-analyze:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* DASHBOARD */
+  .dashboard { display: none; flex-direction: column; gap: 1.5rem; }
+  .section-title { font-size: 12px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+
+  /* FILE BADGE */
+  .file-badge { display: flex; align-items: center; gap: 14px; background: var(--blue-light); border: 1px solid #b5ceee; border-radius: var(--radius); padding: 14px 18px; }
+  .file-badge-icon { width: 40px; height: 40px; background: var(--blue); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .file-badge-icon svg { width: 20px; height: 20px; stroke: white; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .file-badge-name { font-size: 14px; font-weight: 600; color: var(--blue); }
+  .file-badge-meta { font-size: 12px; color: #3a6a9e; margin-top: 2px; }
+  .badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 100px; font-size: 11px; font-weight: 600; }
+  .badge-blue { background: var(--blue-light); color: var(--blue); }
+  .badge-green { background: var(--green-light); color: var(--green); }
+  .badge-amber { background: var(--amber-light); color: var(--amber); }
+  .badge-red { background: var(--red-light); color: var(--red); }
+
+  /* METRICS GRID */
+  .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .metric-card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 1.1rem 1.25rem; box-shadow: var(--shadow); }
+  .metric-label { font-size: 12px; color: var(--text3); font-weight: 500; margin-bottom: 4px; }
+  .metric-value { font-size: 26px; font-weight: 700; color: var(--text); letter-spacing: -0.02em; line-height: 1.1; }
+  .metric-sub { font-size: 11px; color: var(--text3); margin-top: 3px; }
+  .metric-card.highlight { border-color: #b5ceee; background: var(--blue-light); }
+  .metric-card.highlight .metric-value { color: var(--blue); }
+
+  /* CHART CARDS */
+  .chart-card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 1.5rem; box-shadow: var(--shadow); }
+  .chart-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  .chart-title { font-size: 14px; font-weight: 600; color: var(--text); }
+  .tabs { display: flex; gap: 4px; }
+  .tab { padding: 5px 14px; border-radius: 100px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid var(--border2); background: transparent; color: var(--text2); font-family: inherit; transition: all 0.15s; }
+  .tab.active { background: var(--blue); color: white; border-color: var(--blue); }
+  .tab:hover:not(.active) { background: var(--surface2); }
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+  @media (max-width: 700px) { .charts-row { grid-template-columns: 1fr; } .metrics-grid { grid-template-columns: repeat(2,1fr); } }
+
+  /* BOTTLENECK TABLE */
+  .bottleneck-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .bottleneck-table th { text-align: left; font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; padding: 0 12px 10px 0; border-bottom: 1px solid var(--border); }
+  .bottleneck-table td { padding: 10px 12px 10px 0; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .bottleneck-table tr:last-child td { border-bottom: none; }
+  .util-bar-bg { width: 100px; height: 7px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
+  .util-bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s; }
+
+  /* AI SECTION */
+  .ai-card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 1.5rem; box-shadow: var(--shadow); }
+  .ai-header { display: flex; align-items: center; gap: 10px; margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+  .ai-icon { width: 34px; height: 34px; background: linear-gradient(135deg, #3266ad, #5a3faa); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; }
+  .ai-icon svg { width: 18px; height: 18px; stroke: white; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .ai-title { font-size: 14px; font-weight: 600; color: var(--text); }
+  .ai-sub { font-size: 12px; color: var(--text3); }
+  .thinking { display: flex; align-items: center; gap: 10px; color: var(--text3); font-size: 13px; padding: 1rem 0; }
+  .dots { display: flex; gap: 5px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--blue); animation: bounce 1.2s infinite; }
+  .dot:nth-child(2) { animation-delay: 0.2s; } .dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-7px)} }
+
+  .ai-content { font-size: 14px; line-height: 1.8; color: var(--text); }
+  .ai-content h3 { font-size: 15px; font-weight: 700; color: var(--text); margin: 1.4rem 0 0.6rem; display: flex; align-items: center; gap: 8px; }
+  .ai-content h3::before { content: ''; display: inline-block; width: 4px; height: 18px; background: var(--blue); border-radius: 2px; }
+  .ai-content h3:first-child { margin-top: 0; }
+  .ai-content p { margin-bottom: 0.85rem; color: var(--text2); }
+  .ai-content ul { margin: 0.5rem 0 1rem 1.5rem; }
+  .ai-content li { margin-bottom: 5px; color: var(--text2); }
+  .ai-content strong { color: var(--text); font-weight: 600; }
+
+  /* RESET BTN */
+  .btn-reset { width: 100%; padding: 12px; background: transparent; color: var(--text2); border: 1px solid var(--border2); border-radius: var(--radius-sm); font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background 0.15s; }
+  .btn-reset:hover { background: var(--surface2); }
+
+  /* EXPORT */
+  .export-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 24px; right: 24px; background: #1a1a18; color: white; padding: 12px 18px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; box-shadow: var(--shadow-md); z-index: 999; opacity: 0; transform: translateY(8px); transition: all 0.25s; pointer-events: none; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-brand">
+    <div class="header-logo">
+      <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    </div>
+    <div>
+      <div class="brand-name">SimAnalyzer</div>
+      <div class="brand-sub">Arena Simulation Reports · IA integrada</div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <button class="btn-outline" onclick="downloadHTML()" title="Descargar esta aplicación como HTML">
+      <svg width="14" height="14" stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Descargar app
+    </button>
+  </div>
+</header>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- UPLOAD VIEW -->
+  <div id="uploadView">
+    <div class="upload-card" id="dropzone" onclick="document.getElementById('fileInput').click()">
+      <div class="upload-icon-wrap">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      </div>
+      <div class="upload-title">Arrastrá tu archivo de simulación aquí</div>
+      <div class="upload-sub">Soltá el reporte exportado desde Arena Simulation</div>
+      <button class="btn-primary" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">
+        <svg width="16" height="16" stroke="white" fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+        Seleccionar archivo
+      </button>
+      <div class="file-types">Formatos soportados: .xlsm · .xlsx</div>
+      <input type="file" id="fileInput" accept=".xlsm,.xlsx" style="display:none">
+    </div>
+
+    <div class="desc-card">
+      <label class="field-label" for="simDesc">Descripción de la simulación (opcional)</label>
+      <textarea id="simDesc" placeholder="Describí el contexto de tu simulación: qué proceso modela, cuántas réplicas, período de tiempo, recursos involucrados, objetivo del análisis, restricciones conocidas..."></textarea>
+    </div>
+
+    <div class="analyze-btn-wrap">
+      <button class="btn-analyze" id="analyzeBtn" onclick="startAnalysis()" disabled>
+        <svg width="18" height="18" stroke="white" fill="none" stroke-width="2" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        Analizar simulación con IA
+      </button>
+    </div>
+  </div>
+
+  <!-- DASHBOARD VIEW -->
+  <div id="dashboardView" class="dashboard">
+
+    <!-- File info -->
+    <div class="file-badge" id="fileBadge">
+      <div class="file-badge-icon">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      </div>
+      <div>
+        <div class="file-badge-name" id="fileNameDisplay">—</div>
+        <div class="file-badge-meta" id="fileMetaDisplay">—</div>
+      </div>
+      <div style="margin-left:auto; display:flex; gap:6px; flex-wrap:wrap;" id="fileBadges"></div>
+    </div>
+
+    <!-- Metrics -->
+    <div>
+      <div class="section-title">Resumen de la simulación</div>
+      <div class="metrics-grid" id="metricsGrid"></div>
+    </div>
+
+    <!-- Main chart -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title">Análisis de recursos y colas</div>
+        <div class="tabs">
+          <button class="tab active" onclick="switchTab('util',this)">Utilización</button>
+          <button class="tab" onclick="switchTab('wait',this)">Tiempo en cola</button>
+          <button class="tab" onclick="switchTab('num',this)">N° en espera</button>
+        </div>
+      </div>
+      <div style="position:relative;width:100%;height:300px;">
+        <canvas id="mainChart" role="img" aria-label="Gráfico principal de recursos y colas de la simulación"></canvas>
+      </div>
+    </div>
+
+    <!-- Two charts row -->
+    <div class="charts-row">
+      <div class="chart-card">
+        <div class="chart-header"><div class="chart-title">Distribución de colas</div></div>
+        <div style="position:relative;width:100%;" id="queueChartWrap">
+          <canvas id="queueChart" role="img" aria-label="Número promedio en espera por cola"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header"><div class="chart-title">Radar de carga del sistema</div></div>
+        <div style="position:relative;width:100%;height:280px;">
+          <canvas id="radarChart" role="img" aria-label="Radar de utilización y carga por componente"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottleneck table -->
+    <div class="chart-card">
+      <div class="section-title">Detalle de recursos</div>
+      <table class="bottleneck-table">
+        <thead>
+          <tr>
+            <th>Recurso</th>
+            <th>Utilización</th>
+            <th>Barra</th>
+            <th>N° ocupado</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody id="resourceTable"></tbody>
+      </table>
+    </div>
+
+    <!-- AI Analysis -->
+    <div class="ai-card">
+      <div class="ai-header">
+        <div class="ai-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        </div>
+        <div>
+          <div class="ai-title">Análisis inteligente con IA</div>
+          <div class="ai-sub">Resumen, cuellos de botella y recomendaciones generadas por Claude</div>
+        </div>
+        <div style="margin-left:auto;">
+          <span class="badge badge-blue">Claude Sonnet</span>
+        </div>
+      </div>
+      <div id="aiThinking" class="thinking" style="display:none">
+        <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        Analizando resultados de la simulación con IA...
+      </div>
+      <div id="aiContent" class="ai-content"></div>
+    </div>
+
+    <!-- Export + Reset -->
+    <div class="export-row">
+      <button class="btn-outline" onclick="exportSummaryTxt()">
+        <svg width="14" height="14" stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Exportar resumen .txt
+      </button>
+      <button class="btn-outline" onclick="printPage()">
+        <svg width="14" height="14" stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Imprimir / Guardar PDF
+      </button>
+      <button class="btn-reset" onclick="resetApp()" style="flex:1; min-width:180px;">
+        <svg width="14" height="14" stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+        Analizar otro archivo
+      </button>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ─── STATE ──────────────────────────────────────────────────────────────────
+let parsedData = null;
+let charts = {};
+let currentTab = 'util';
+let aiText = '';
+
+// ─── DRAG & DROP ─────────────────────────────────────────────────────────────
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
+dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.classList.remove('drag'); if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', e => { if(e.target.files[0]) handleFile(e.target.files[0]); });
+
+// ─── FILE HANDLING ─────────────────────────────────────────────────────────
+function handleFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!['xlsm','xlsx'].includes(ext)) { showToast('Formato no soportado. Usá .xlsm o .xlsx'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'binary' });
+      parsedData = parseArenaWorkbook(wb, file.name, file.size);
+      document.getElementById('analyzeBtn').disabled = false;
+      document.querySelector('.upload-title').textContent = '✓ ' + file.name;
+      document.querySelector('.upload-sub').textContent = `${(file.size/1024).toFixed(1)} KB cargado — listo para analizar`;
+      showToast('Archivo cargado correctamente');
+    } catch(err) { showToast('Error al leer el archivo: ' + err.message); }
+  };
+  reader.readAsBinaryString(file);
+}
+
+// ─── PARSE ARENA WORKBOOK ──────────────────────────────────────────────────
+function parseArenaWorkbook(wb, fileName, fileSize) {
+  const res = { fileName, fileSize, resources: [], queues: [], counters: [], outputs: [], projectInfo: {}, sheets: {} };
+  wb.SheetNames.forEach(n => {
+    const ws = wb.Sheets[n];
+    if (ws) res.sheets[n] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+  });
+
+  // Project info
+  const pi = res.sheets['ProjectInformation'];
+  if (pi && pi[1]) {
+    res.projectInfo = {
+      name: String(pi[1][0] || 'Unnamed Project'),
+      modelFile: String(pi[1][1] || ''),
+      date: pi[1][2] ? new Date(pi[1][2]).toLocaleString('es-AR') : '',
+      timeUnits: pi[1][3],
+      replications: parseInt(pi[1][4]) || 1,
+      duration: parseFloat(pi[1][5]) || 0,
+      ci: parseFloat(pi[1][6]) || 0.95
+    };
+  }
+
+  // Continuous stats → resources & queues
+  const cont = res.sheets['ContinuousTimeStatsByRep'] || [];
+  cont.slice(1).forEach(row => {
+    const name = String(row[3]||'').trim();
+    const type = String(row[4]||'').trim();
+    const source = String(row[5]||'').trim();
+    const avg = parseFloat(row[6]) || 0;
+    const min = parseFloat(row[9]) || 0;
+    const max = parseFloat(row[10]) || 0;
+    if (source === 'Resource') {
+      let r = res.resources.find(x => x.name === name);
+      if (!r) { r = { name, utilization: 0, numberBusy: 0, numberScheduled: 1 }; res.resources.push(r); }
+      if (type === 'Instantaneous Utilization') r.utilization = avg;
+      if (type === 'Number Busy') r.numberBusy = avg;
+      if (type === 'Number Scheduled') r.numberScheduled = avg;
+    }
+    if (source === 'Queue' && type === 'Number Waiting') {
+      let q = res.queues.find(x => x.name === name.replace('.Queue',''));
+      if (!q) { q = { name: name.replace('.Queue',''), numberWaiting: 0, waitTime: 0, maxWait: 0 }; res.queues.push(q); }
+      q.numberWaiting = avg; q.minWait = min; q.maxWaitNum = max;
+    }
+  });
+
+  // Discrete stats → wait times
+  const disc = res.sheets['DiscreteTimeStatsByRep'] || [];
+  disc.slice(1).forEach(row => {
+    const name = String(row[3]||'').replace('.Queue','').trim();
+    const type = String(row[4]||'').trim();
+    const avg = parseFloat(row[6]) || 0;
+    const max = parseFloat(row[8]) || 0;
+    if (type === 'Waiting Time') {
+      let q = res.queues.find(x => x.name === name);
+      if (!q) { q = { name, numberWaiting: 0, waitTime: 0, maxWait: 0 }; res.queues.push(q); }
+      q.waitTime = avg; q.maxWait = max;
+    }
+  });
+
+  // Counters
+  const cnt = res.sheets['CounterStatsByRep'] || [];
+  cnt.slice(1).forEach(row => { if (row[3]) res.counters.push({ name: String(row[3]), value: parseFloat(row[6])||0 }); });
+
+  // Outputs
+  const out = res.sheets['OutputStatsByRep'] || [];
+  out.slice(1).forEach(row => { if (row[3]) res.outputs.push({ name: String(row[3]), type: String(row[4]), value: parseFloat(row[6])||0 }); });
+
+  return res;
+}
+
+// ─── START ANALYSIS ────────────────────────────────────────────────────────
+function startAnalysis() {
+  if (!parsedData) return;
+  document.getElementById('uploadView').style.display = 'none';
+  const dv = document.getElementById('dashboardView');
+  dv.style.display = 'flex';
+
+  const d = parsedData;
+  document.getElementById('fileNameDisplay').textContent = d.fileName;
+  document.getElementById('fileMetaDisplay').textContent =
+    `${d.projectInfo.replications} réplica(s) · Duración: ${d.projectInfo.duration} ${tuLabel(d.projectInfo.timeUnits)} · Ejecutado: ${d.projectInfo.date}`;
+
+  const badges = document.getElementById('fileBadges');
+  badges.innerHTML = `<span class="badge badge-green">${d.resources.length} recursos</span><span class="badge badge-blue">${d.queues.length} colas</span>`;
+
+  renderMetrics(d);
+  renderMainChart(d, 'util');
+  renderQueueChart(d);
+  renderRadarChart(d);
+  renderResourceTable(d);
+  runAIAnalysis(d);
+}
+
+function tuLabel(u) { return u==3?'horas':u==4?'minutos':u==2?'días':'unidades'; }
+
+// ─── METRICS ───────────────────────────────────────────────────────────────
+function renderMetrics(d) {
+  const avgUtil = d.resources.length ? d.resources.reduce((a,r)=>a+r.utilization,0)/d.resources.length : 0;
+  const maxQ = d.queues.length ? Math.max(...d.queues.map(q=>q.numberWaiting||0)) : 0;
+  const totalMov = d.counters.reduce((a,c)=>a+c.value,0);
+  const bottlenecks = d.resources.filter(r=>r.utilization>0.8).length;
+  const maxUtil = d.resources.length ? Math.max(...d.resources.map(r=>r.utilization)) : 0;
+
+  document.getElementById('metricsGrid').innerHTML = `
+    <div class="metric-card ${avgUtil>0.8?'highlight':''}">
+      <div class="metric-label">Utilización promedio</div>
+      <div class="metric-value">${(avgUtil*100).toFixed(1)}%</div>
+      <div class="metric-sub">de todos los recursos</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Máx. en cola (prom.)</div>
+      <div class="metric-value">${maxQ.toFixed(3)}</div>
+      <div class="metric-sub">entidades simultáneas</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Recursos simulados</div>
+      <div class="metric-value">${d.resources.length}</div>
+      <div class="metric-sub">${d.queues.length} colas monitoreadas</div>
+    </div>
+    <div class="metric-card ${totalMov>0?'':''}">
+      <div class="metric-label">Contador total</div>
+      <div class="metric-value">${totalMov.toLocaleString('es-AR')}</div>
+      <div class="metric-sub">${d.counters.map(c=>c.name).join(', ')||'—'}</div>
+    </div>
+    <div class="metric-card ${bottlenecks>0?'highlight':''}">
+      <div class="metric-label">Cuellos de botella</div>
+      <div class="metric-value">${bottlenecks}</div>
+      <div class="metric-sub">recursos con util. > 80%</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Máxima utilización</div>
+      <div class="metric-value">${(maxUtil*100).toFixed(1)}%</div>
+      <div class="metric-sub">${d.resources.find(r=>r.utilization===maxUtil)?.name||'—'}</div>
+    </div>
+  `;
+}
+
+// ─── CHARTS ────────────────────────────────────────────────────────────────
+function switchTab(tab, btn) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  if (charts.main) { charts.main.destroy(); delete charts.main; }
+  renderMainChart(parsedData, tab);
+}
+
+function renderMainChart(d, tab) {
+  const ctx = document.getElementById('mainChart').getContext('2d');
+  let labels, data, label, colors;
+  if (tab === 'util') {
+    labels = d.resources.map(r=>r.name);
+    data = d.resources.map(r=>parseFloat((r.utilization*100).toFixed(2)));
+    label = 'Utilización (%)';
+    colors = data.map(v => v>80?'#e24b4a':v>60?'#ef9f27':'#3266ad');
+  } else if (tab === 'wait') {
+    labels = d.queues.map(q=>q.name);
+    data = d.queues.map(q=>parseFloat(((q.waitTime||0)*60).toFixed(5)));
+    label = 'Tiempo promedio en cola (min × 60)';
+    colors = '#1d9e75';
+  } else {
+    labels = d.queues.map(q=>q.name);
+    data = d.queues.map(q=>parseFloat((q.numberWaiting||0).toFixed(5)));
+    label = 'Número promedio en espera';
+    colors = '#3266ad';
+  }
+  charts.main = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [{ label, data, backgroundColor: colors, borderRadius: 5, borderSkipped: false }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y.toFixed(4)}` } } },
+      scales: {
+        y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { font: { size: 12 } } },
+        x: { grid: { display: false }, ticks: { font: { size: 11 }, maxRotation: 35 } }
+      }
+    }
+  });
+}
+
+function renderQueueChart(d) {
+  const wrap = document.getElementById('queueChartWrap');
+  const h = Math.max(200, d.queues.length * 44 + 60);
+  wrap.style.height = h + 'px';
+  const ctx = document.getElementById('queueChart').getContext('2d');
+  charts.queue = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: d.queues.map(q=>q.name.length>18?q.name.slice(0,18)+'…':q.name),
+      datasets: [{ label: 'N° en espera', data: d.queues.map(q=>parseFloat((q.numberWaiting||0).toFixed(5))), backgroundColor: '#5DCAA5', borderRadius: 4, borderSkipped: false }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { font: { size: 11 } } },
+        y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+      }
+    }
+  });
+}
+
+function renderRadarChart(d) {
+  const all = [
+    ...d.resources.map(r => ({ name: r.name, val: parseFloat((r.utilization*100).toFixed(1)) })),
+    ...d.queues.slice(0,5).map(q => ({ name: q.name, val: parseFloat(((q.numberWaiting||0)*100).toFixed(1)) }))
+  ];
+  const ctx = document.getElementById('radarChart').getContext('2d');
+  charts.radar = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: all.map(a=>a.name),
+      datasets: [{
+        label: 'Nivel de carga',
+        data: all.map(a=>a.val),
+        backgroundColor: 'rgba(50,102,173,0.12)',
+        borderColor: '#3266ad', pointBackgroundColor: '#3266ad', pointRadius: 4, pointHoverRadius: 6
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { r: { beginAtZero: true, max: 100, ticks: { font: { size: 10 }, stepSize: 20 }, pointLabels: { font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.06)' } } }
+    }
+  });
+}
+
+function renderResourceTable(d) {
+  const tbody = document.getElementById('resourceTable');
+  if (!d.resources.length) { tbody.innerHTML = '<tr><td colspan="5" style="color:var(--text3);font-size:13px;padding:1rem 0;">No se encontraron recursos en este archivo.</td></tr>'; return; }
+  tbody.innerHTML = d.resources.map(r => {
+    const pct = (r.utilization*100).toFixed(2);
+    const col = r.utilization>0.8?'#e24b4a':r.utilization>0.6?'#ef9f27':'#3266ad';
+    const badgeClass = r.utilization>0.8?'badge-red':r.utilization>0.6?'badge-amber':'badge-green';
+    const badgeText = r.utilization>0.8?'Cuello de botella':r.utilization>0.6?'Carga alta':'Normal';
+    return `<tr>
+      <td style="font-weight:600;font-size:13px;">${r.name}</td>
+      <td style="font-size:13px;font-weight:700;color:${col};">${pct}%</td>
+      <td><div class="util-bar-bg"><div class="util-bar-fill" style="width:${Math.min(pct,100)}%;background:${col};"></div></div></td>
+      <td style="font-size:13px;color:var(--text2);">${r.numberBusy.toFixed(2)} / ${r.numberScheduled.toFixed(0)}</td>
+      <td><span class="badge ${badgeClass}">${badgeText}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── AI ANALYSIS ───────────────────────────────────────────────────────────
+async function runAIAnalysis(d) {
+  document.getElementById('aiThinking').style.display = 'flex';
+  document.getElementById('aiContent').innerHTML = '';
+  const desc = document.getElementById('simDesc').value.trim();
+
+  const summary = {
+    proyecto: d.projectInfo.name,
+    replicas: d.projectInfo.replications,
+    duracion: `${d.projectInfo.duration} ${tuLabel(d.projectInfo.timeUnits)}`,
+    fecha: d.projectInfo.date,
+    recursos: d.resources.map(r => ({
+      nombre: r.name,
+      utilizacion: (r.utilization*100).toFixed(2)+'%',
+      numero_ocupado: r.numberBusy.toFixed(3),
+      numero_programado: r.numberScheduled
+    })),
+    colas: d.queues.map(q => ({
+      nombre: q.name,
+      numero_en_espera_prom: (q.numberWaiting||0).toFixed(5),
+      tiempo_espera_prom: ((q.waitTime||0)*60).toFixed(5)+' min',
+      max_espera: ((q.maxWait||0)*60).toFixed(5)+' min'
+    })),
+    contadores: d.counters,
+    outputs: d.outputs
+  };
+
+  const prompt = `Sos un experto en simulación de sistemas discretos usando Arena Simulation. Analizá estos resultados y respondé en español con estructura clara usando ### para los títulos.
+
+Incluí las siguientes secciones:
+### Resumen ejecutivo
+### Análisis de utilización de recursos
+### Detección de cuellos de botella
+### Variables calculadas clave
+### Recomendaciones de mejora
+
+Contexto provisto por el usuario: "${desc || 'No se proporcionó descripción adicional.'}"
+
+Datos de la simulación:
+${JSON.stringify(summary, null, 2)}
+
+Sé específico y técnico. Si hay recursos con utilización >80%, identificalos como cuellos de botella críticos. Incluí al menos 4 recomendaciones concretas y accionables. Mencioná las variables más relevantes con sus valores exactos.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    aiText = data.content?.[0]?.text || 'Sin respuesta.';
+    renderAIContent(aiText);
+  } catch(err) {
+    aiText = `### Error al conectar con la IA\n\nNo se pudo obtener el análisis: ${err.message}\n\nVerificá tu conexión a internet e intentá nuevamente.`;
+    renderAIContent(aiText);
+  }
+  document.getElementById('aiThinking').style.display = 'none';
+}
+
+function renderAIContent(text) {
+  const html = text
+    .replace(/### (.+)/g, '<h3>$1</h3>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^- (.+)/gm, '<li>$1</li>')
+    .replace(/(<li>[^<]*<\/li>\n?)+/g, m => `<ul>${m}</ul>`)
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/<p>(<[hul])/g, '$1')
+    .replace(/(<\/[hul][^>]*>)<\/p>/g, '$1');
+  document.getElementById('aiContent').innerHTML = `<p>${html}</p>`;
+}
+
+// ─── EXPORT ────────────────────────────────────────────────────────────────
+function exportSummaryTxt() {
+  if (!parsedData) return;
+  const d = parsedData;
+  let txt = `SIMANALYZER — REPORTE DE SIMULACIÓN\n${'='.repeat(50)}\n\n`;
+  txt += `Proyecto: ${d.projectInfo.name}\nFecha: ${d.projectInfo.date}\nRéplicas: ${d.projectInfo.replications}\nDuración: ${d.projectInfo.duration} ${tuLabel(d.projectInfo.timeUnits)}\n\n`;
+  txt += `RECURSOS\n${'-'.repeat(30)}\n`;
+  d.resources.forEach(r => { txt += `${r.name}: ${(r.utilization*100).toFixed(2)}% utilización\n`; });
+  txt += `\nCOLAS\n${'-'.repeat(30)}\n`;
+  d.queues.forEach(q => { txt += `${q.name}: ${(q.numberWaiting||0).toFixed(5)} en espera prom., tiempo: ${((q.waitTime||0)*60).toFixed(5)} min\n`; });
+  if (aiText) { txt += `\nANÁLISIS IA\n${'-'.repeat(30)}\n${aiText.replace(/[#*]/g,'').trim()}\n`; }
+  const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `SimAnalyzer_${d.projectInfo.name.replace(/\s+/g,'_')}.txt`; a.click();
+  showToast('Resumen exportado');
+}
+
+function printPage() { window.print(); }
+
+// ─── RESET ─────────────────────────────────────────────────────────────────
+function resetApp() {
+  Object.values(charts).forEach(c => c && c.destroy()); charts = {};
+  parsedData = null; aiText = '';
+  document.getElementById('uploadView').style.display = 'block';
+  document.getElementById('dashboardView').style.display = 'none';
+  fileInput.value = '';
+  document.getElementById('analyzeBtn').disabled = true;
+  document.querySelector('.upload-title').textContent = 'Arrastrá tu archivo de simulación aquí';
+  document.querySelector('.upload-sub').textContent = 'Soltá el reporte exportado desde Arena Simulation';
+}
+
+// ─── DOWNLOAD THIS APP ──────────────────────────────────────────────────────
+function downloadHTML() {
+  const html = document.documentElement.outerHTML;
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'SimAnalyzer_Arena.html'; a.click();
+  showToast('App descargada como HTML');
+}
+
+// ─── TOAST ──────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+</script>
+</body>
+</html>
